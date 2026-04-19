@@ -15,7 +15,7 @@
 
 ## 📄 Read the whitepaper
 
-➡️ [hivemind-transport-security.html](./projects/hivemind-transport-security.html)
+➡️ [hivemind-transport-security.html](./hivemind-transport-security.html)
 
 *(Render via GitHub Pages or open locally in browser)*
 
