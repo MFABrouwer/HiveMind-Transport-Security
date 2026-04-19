@@ -1,0 +1,195 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Hivemind Transport Security Architecture — Marc Brouwer</title>
+    <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@300;400;500;700&family=Outfit:wght@300;400;600;700;800&display=swap" rel="stylesheet">
+    <style>
+        :root{--bg-primary:#0a0e17;--bg-secondary:#111827;--bg-card:#151d2e;--accent-cyan:#22d3ee;--accent-green:#34d399;--accent-amber:#fbbf24;--accent-red:#f87171;--text-primary:#f1f5f9;--text-secondary:#94a3b8;--text-muted:#64748b;--border:#1e293b}
+        *{margin:0;padding:0;box-sizing:border-box}
+        body{font-family:'Outfit',sans-serif;background:var(--bg-primary);color:var(--text-primary);line-height:1.8}
+        body::before{content:'';position:fixed;top:0;left:0;right:0;bottom:0;background-image:linear-gradient(rgba(34,211,238,0.02) 1px,transparent 1px),linear-gradient(90deg,rgba(34,211,238,0.02) 1px,transparent 1px);background-size:60px 60px;pointer-events:none;z-index:0}
+        nav{position:fixed;top:0;left:0;right:0;z-index:100;padding:1rem 2rem;background:rgba(10,14,23,0.9);backdrop-filter:blur(20px);border-bottom:1px solid var(--border);display:flex;justify-content:space-between;align-items:center}
+        nav a{font-family:'JetBrains Mono',monospace;font-size:0.85rem;color:var(--accent-cyan);text-decoration:none}
+        nav a:hover{text-decoration:underline}
+        .paper{max-width:820px;margin:0 auto;padding:8rem 2rem 4rem;position:relative;z-index:1}
+        .paper-meta{font-family:'JetBrains Mono',monospace;font-size:0.7rem;color:var(--text-muted);letter-spacing:0.1em;text-transform:uppercase;margin-bottom:1rem}
+        .paper-badge{display:inline-block;padding:0.25rem 0.7rem;background:rgba(251,191,36,0.1);border:1px solid rgba(251,191,36,0.2);border-radius:4px;font-family:'JetBrains Mono',monospace;font-size:0.7rem;color:var(--accent-amber);margin-bottom:2rem}
+        .paper h1{font-size:clamp(2rem,4vw,2.8rem);font-weight:800;line-height:1.2;margin-bottom:1rem;letter-spacing:-0.02em}
+        .paper h1 .highlight{background:linear-gradient(135deg,var(--accent-cyan),var(--accent-green));-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text}
+        .paper-subtitle{font-size:1.15rem;color:var(--text-secondary);font-weight:300;margin-bottom:2rem;max-width:650px}
+        .paper-info{display:flex;gap:2rem;padding:1.5rem 0;border-top:1px solid var(--border);border-bottom:1px solid var(--border);margin-bottom:3rem;flex-wrap:wrap}
+        .paper-info-item{display:flex;flex-direction:column}
+        .paper-info-label{font-family:'JetBrains Mono',monospace;font-size:0.65rem;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.1em}
+        .paper-info-value{font-size:0.95rem;color:var(--text-primary);margin-top:0.25rem}
+        .toc{padding:1.5rem;background:var(--bg-card);border:1px solid var(--border);border-radius:10px;margin-bottom:3rem}
+        .toc-title{font-family:'JetBrains Mono',monospace;font-size:0.75rem;color:var(--accent-cyan);text-transform:uppercase;letter-spacing:0.1em;margin-bottom:1rem}
+        .toc ol{list-style:none;counter-reset:toc-counter}
+        .toc li{counter-increment:toc-counter;margin-bottom:0.5rem}
+        .toc li a{color:var(--text-secondary);text-decoration:none;font-size:0.9rem;transition:color 0.3s;display:flex;gap:0.75rem}
+        .toc li a::before{content:counter(toc-counter,decimal-leading-zero);font-family:'JetBrains Mono',monospace;color:var(--text-muted);font-size:0.8rem}
+        .toc li a:hover{color:var(--accent-cyan)}
+        .paper h2{font-size:1.6rem;font-weight:700;margin-top:3.5rem;margin-bottom:1rem;padding-top:2rem;border-top:1px solid var(--border);letter-spacing:-0.01em}
+        .paper h3{font-size:1.15rem;font-weight:600;margin-top:2rem;margin-bottom:0.75rem;color:var(--accent-cyan)}
+        .paper p{color:var(--text-secondary);font-size:1rem;font-weight:300;margin-bottom:1.25rem}
+        .callout{padding:1.25rem 1.5rem;background:var(--bg-card);border-left:3px solid var(--accent-cyan);border-radius:0 8px 8px 0;margin:1.5rem 0}
+        .callout p{margin-bottom:0;font-size:0.95rem}
+        .callout.warning{border-left-color:var(--accent-amber)}
+        .callout.critical{border-left-color:var(--accent-red)}
+        .layer-card{padding:1.5rem;background:var(--bg-card);border:1px solid var(--border);border-radius:10px;margin:1rem 0;transition:border-color 0.3s}
+        .layer-card:hover{border-color:rgba(34,211,238,0.3)}
+        .layer-card h4{font-family:'JetBrains Mono',monospace;font-size:0.85rem;color:var(--accent-cyan);margin-bottom:0.5rem}
+        .layer-card p{margin-bottom:0}
+        .term{color:var(--accent-cyan);font-weight:500}
+        .diagram-container{padding:2rem;background:var(--bg-card);border:1px solid var(--border);border-radius:10px;margin:2rem 0;text-align:center}
+        .diagram-label{font-family:'JetBrains Mono',monospace;font-size:0.7rem;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.1em;margin-bottom:1.5rem}
+        .ascii-diagram{font-family:'JetBrains Mono',monospace;font-size:0.75rem;color:var(--text-secondary);line-height:1.5;white-space:pre;text-align:left;display:inline-block;overflow-x:auto;max-width:100%}
+        .principles-grid{display:grid;grid-template-columns:1fr 1fr;gap:1rem;margin:1.5rem 0}
+        @media(max-width:600px){.principles-grid{grid-template-columns:1fr}}
+        .ref-list{list-style:none;counter-reset:ref-counter}
+        .ref-list li{counter-increment:ref-counter;margin-bottom:0.75rem;padding-left:2rem;position:relative;color:var(--text-secondary);font-size:0.9rem}
+        .ref-list li::before{content:"[" counter(ref-counter) "]";position:absolute;left:0;font-family:'JetBrains Mono',monospace;font-size:0.75rem;color:var(--text-muted)}
+        footer{max-width:820px;margin:0 auto;padding:2rem;text-align:center}
+        footer p{color:var(--text-muted);font-size:0.75rem;font-family:'JetBrains Mono',monospace}
+    </style>
+</head>
+<body>
+<nav><a href="../index.html">← marc.sec / portfolio</a><a href="../index.html#projects">all projects</a></nav>
+
+<article class="paper">
+    <div class="paper-meta">Whitepaper — Security Architecture</div>
+    <span class="paper-badge">Concept Document v1.0</span>
+    <h1>Autonomous Transport <span class="highlight">Hivemind</span><br>Security Architecture</h1>
+    <p class="paper-subtitle">A layered defense model for AI-coordinated autonomous transportation, inspired by biological immune systems.</p>
+    <div class="paper-info">
+        <div class="paper-info-item"><span class="paper-info-label">Author</span><span class="paper-info-value">Marc Brouwer</span></div>
+        <div class="paper-info-item"><span class="paper-info-label">Date</span><span class="paper-info-value">April 2026</span></div>
+        <div class="paper-info-item"><span class="paper-info-label">Status</span><span class="paper-info-value">Concept / Thought Exercise</span></div>
+        <div class="paper-info-item"><span class="paper-info-label">Domain</span><span class="paper-info-value">Critical Infrastructure Security</span></div>
+    </div>
+
+    <div class="toc"><div class="toc-title">Table of Contents</div><ol>
+        <li><a href="#abstract">Abstract</a></li>
+        <li><a href="#context">Context & Problem Statement</a></li>
+        <li><a href="#architecture">Architecture Overview</a></li>
+        <li><a href="#layer1">Layer 1 — The Hivemind (Central Nervous System)</a></li>
+        <li><a href="#layer2">Layer 2 — Individual Vehicle Autonomy (White Blood Cells)</a></li>
+        <li><a href="#layer3">Layer 3 — Air-Gapped Update Pipeline (Skin Barrier)</a></li>
+        <li><a href="#attack">Attack Scenarios & Mitigation</a></li>
+        <li><a href="#weaknesses">Known Weaknesses</a></li>
+        <li><a href="#conclusion">Conclusion & Next Steps</a></li>
+        <li><a href="#references">References</a></li>
+    </ol></div>
+
+    <h2 id="abstract">Abstract</h2>
+    <p>This document presents a security architecture concept for future AI-driven autonomous transportation systems. The model describes a three-layer defense system inspired by the human immune system: a centrally coordinating AI (hivemind) as the adaptive immune system, individual vehicle autonomy as a local immune response, and an air-gapped update pipeline as a physical barrier. The architecture is designed according to the principles of defense in depth, zero trust, and automated containment.</p>
+    <div class="callout"><p><strong>Note:</strong> This is a conceptual thought-exercise document, intended to apply security thinking to a future technology domain. It serves as a portfolio demonstration of security architecture principles, not a production specification.</p></div>
+
+    <h2 id="context">Context & Problem Statement</h2>
+    <p>The transition to autonomous transportation creates a new mobility paradigm: instead of individual car ownership, the model shifts to Mobility as a Service (MaaS), where a central AI system — the hivemind — coordinates a fleet of autonomous vehicles.</p>
+    <p>This system combines two transportation layers: a predictable layer of repetitive trips (commuting) that the AI optimizes based on pattern recognition, and an on-demand layer where users request transport with variable lead times.</p>
+    <p>The security challenges are significant. A hacked transportation system isn't a data breach — it's a physical threat. Compromised vehicles are potential weapons. This places the system in the category of <span class="term">critical infrastructure</span>, comparable to power grids, water treatment, and air traffic control.</p>
+    <p>The core question is: how do you secure a system that is simultaneously connected, autonomous, and physically dangerous?</p>
+
+    <h2 id="architecture">Architecture Overview</h2>
+    <p>The proposed architecture follows a biological immune system model with three defense layers that function independently but form a cohesive whole.</p>
+    <div class="diagram-container"><div class="diagram-label">Figure 1 — Three-Layer Defense Model</div>
+<pre class="ascii-diagram">
+┌──────────────────────────────────────────────────────────┐
+│                  LAYER 3: SKIN BARRIER                   │
+│              Air-Gapped Update Pipeline                   │
+│  ┌──────────┐   physical   ┌──────────┐   verification   │
+│  │ Dev Env  │──transfer──→│ Staging  │────────────────→ │
+│  │(offline) │  (sneaker-   │   Env    │   Multi-party    │
+│  └──────────┘    net)      └──────────┘   signing        │
+│                                               │          │
+├───────────────────────────────────────────────┼──────────┤
+│              LAYER 1: CENTRAL NERVOUS SYSTEM  │          │
+│                  Hivemind AI                  ↓          │
+│         ┌─────────────────────────────────────────┐      │
+│         │  • Network-wide monitoring               │      │
+│         │  • Behavioral analysis per vehicle       │      │
+│         │  • Top-down containment                  │      │
+│         │  • Canary deployment of updates          │      │
+│         └──────────┬──────────┬──────────┬────────┘      │
+│                    │          │          │                │
+├────────────────────┼──────────┼──────────┼───────────────┤
+│              LAYER 2: WHITE BLOOD CELLS                  │
+│            Individual Vehicle Autonomy                    │
+│         ┌──────┐  ┌──────┐  ┌──────┐  ┌──────┐          │
+│         │Veh. 1│  │Veh. 2│  │Veh. 3│  │Veh. N│          │
+│         │      │  │      │  │  ⚠️  │  │      │          │
+│         │ ✓ OK │  │ ✓ OK │  │THREAT│  │ ✓ OK │          │
+│         │      │  │      │  │→STOP │  │      │          │
+│         └──────┘  └──────┘  └──────┘  └──────┘          │
+│                              ↓                           │
+│                   [Self-isolation + shutdown]             │
+└──────────────────────────────────────────────────────────┘
+</pre></div>
+    <div class="principles-grid">
+        <div class="layer-card"><h4>Defense in Depth</h4><p>Three independent layers — if one fails, the other two still protect the system.</p></div>
+        <div class="layer-card"><h4>Zero Trust</h4><p>Nothing and nobody is trusted — every command, every update, every connection is verified.</p></div>
+        <div class="layer-card"><h4>Automated Containment</h4><p>Threats are automatically isolated without human intervention — speed is essential.</p></div>
+        <div class="layer-card"><h4>Fail-Safe Design</h4><p>When in doubt, the system stops. Safety always prevails over operational continuity.</p></div>
+    </div>
+
+    <h2 id="layer1">Layer 1 — The Hivemind (Central Nervous System)</h2>
+    <p>The hivemind is the adaptive immune system of the network. It coordinates the fleet, optimizes routes, and monitors the health of the entire system. It runs on an <span class="term">air-gapped network</span> physically separated from the public internet.</p>
+    <h3>Functions</h3>
+    <p>The hivemind continuously monitors the behavior of every vehicle in the fleet. It analyzes patterns: is a vehicle driving an unexpected route? Does the communication frequency deviate? Are unauthorized processes active? Upon detecting anomalies, the hivemind can disconnect a vehicle from the network from above — <span class="term">top-down containment</span>.</p>
+    <p>Additionally, the hivemind manages update rollouts via <span class="term">canary deployment</span>: new software is first deployed to a small test cluster. Only after that cluster functions stably for a predetermined period does the update roll out more broadly. If the cluster detects anomalies, the rollout stops automatically.</p>
+    <h3>Communication Protocol</h3>
+    <p>Communication between the hivemind and vehicles runs through a proprietary encrypted protocol over a closed network. The protocol exclusively accepts predefined message types — all other communication is rejected. This minimizes the attack surface of the wireless channel.</p>
+
+    <h2 id="layer2">Layer 2 — Individual Vehicle Autonomy (White Blood Cells)</h2>
+    <p>This is where the model becomes unique. Each vehicle in the fleet is not merely a passive receiver of instructions — it is its own security agent. Inspired by the Borg collective concept, but inverted: each "drone" protects the collective by <em>shutting itself down</em> when danger is detected.</p>
+    <h3>Security Baseline</h3>
+    <p>Each vehicle contains a hardware-burned <span class="term">security baseline</span> — an immutable snapshot of the system's healthy state. Every active process, every network connection, every sensor reading is continuously compared against this baseline. This is <span class="term">integrity monitoring</span> at the vehicle level.</p>
+    <h3>Tripwires — Hard Rules</h3>
+    <p>In addition to baseline monitoring, each vehicle has a set of <span class="term">tripwires</span>: simple, non-negotiable rules that require no interpretation and cannot be overridden by software.</p>
+    <div class="layer-card"><h4>Tripwire Examples</h4><p>Unauthorized USB connection detected → immediate isolation and shutdown. Unknown device on diagnostic port → isolation and shutdown. Unauthorized wifi connection attempt → isolation and shutdown. Deviation from expected communication pattern with hivemind → isolation and shutdown.</p></div>
+    <h3>Response Protocol</h3>
+    <p>Upon activation of a tripwire or baseline deviation, the vehicle follows a fixed protocol: it immediately disconnects from the hivemind to prevent contagion, reports via a one-way emergency channel the reason for isolation, safely navigates to the side of the road, and shuts down all systems except basic safety functions (lights, alarm system).</p>
+    <p>The hivemind then dispatches a replacement vehicle to the passengers. The isolated vehicle is physically retrieved and examined in a secured environment.</p>
+    <div class="callout warning"><p><strong>Crucial:</strong> The decision to self-isolate is made locally by the vehicle itself, independently of the hivemind. This prevents an attacker who compromises the hivemind from preventing vehicles from self-isolating.</p></div>
+
+    <h2 id="layer3">Layer 3 — Air-Gapped Update Pipeline (Skin Barrier)</h2>
+    <p>The update pipeline is the physical outer boundary of the system — the "skin" that prevents malicious code from entering the ecosystem. The entire update process runs through physical transfer, never through a network connection.</p>
+    <h3>Update Process</h3>
+    <p>Software updates are developed on a completely offline development environment — computers with no network connectivity whatsoever. The completed update is transferred via <span class="term">sneakernet</span> (physical medium, such as a hardware-encrypted external drive) to an equally isolated staging environment.</p>
+    <p>In the staging environment, the update is extensively tested and checked for integrity. Only after successful verification — including <span class="term">multi-party signing</span> by multiple independent parties — is the update released to the hivemind.</p>
+    <p>The hivemind independently verifies the signatures before accepting the update. If one signature is missing, or the hash doesn't match, the update is rejected.</p>
+    <div class="callout critical"><p><strong>Known vulnerability:</strong> The moment of physical transfer is the most vulnerable point in this chain. The Stuxnet attack demonstrated that air-gapped systems can be compromised via USB media. The physical transfer moment therefore requires strict protocols: hardware encryption of the transfer medium, biometric verification of involved personnel, and automatic scanning before data reaches the staging network.</p></div>
+
+    <h2 id="attack">Attack Scenarios & Mitigation</h2>
+    <div class="layer-card"><h4>Scenario 1: External Attack via Vehicle Interface</h4><p>An attacker attempts to gain access via a physical port (USB, OBD-II) or wireless interface (wifi, Bluetooth). The tripwires detect the unauthorized connection and the vehicle isolates itself immediately. Impact on the network: zero. The hivemind registers the isolation and dispatches a replacement vehicle.</p></div>
+    <div class="layer-card"><h4>Scenario 2: Compromised Update</h4><p>An attacker infiltrates the development team and adds malicious code to an update. The multi-party signing requires approval from multiple independent parties. One compromised party is insufficient. Should the attacker manage to obtain all signatures, the canary deployment catches it: anomalous behavior in the test cluster stops the rollout to the broader fleet.</p></div>
+    <div class="layer-card"><h4>Scenario 3: Hivemind Compromise</h4><p>The worst-case scenario: an attacker gains control of the hivemind itself. This is where Layer 2 proves its value. Because vehicles have independent security monitoring, they can detect anomalies in the instructions they receive from the hivemind. Commands that fall outside predefined parameters are refused. The fleet degrades to a safe standalone mode rather than blindly following compromised instructions.</p></div>
+
+    <h2 id="weaknesses">Known Weaknesses</h2>
+    <p>No architecture is perfect, and naming weaknesses is essential for honest assessment.</p>
+    <p>The wireless communication channel between hivemind and vehicles is by definition an attack surface, despite encryption and restricted message types. Radio frequency jamming can disrupt communication.</p>
+    <p>The physical transfer moment in the update pipeline remains vulnerable, as demonstrated by the Stuxnet precedent. This requires exceptionally strict procedural security alongside technical measures.</p>
+    <p>Supply chain attacks at the hardware level (compromised chips, sensors) fall outside the scope of this software-focused model and constitute a separate threat category.</p>
+    <p>Finally, the complexity of the system itself introduces risk. More components mean more potential failure modes. The interaction between three independent defense layers must be carefully tested for unexpected edge cases.</p>
+
+    <h2 id="conclusion">Conclusion & Next Steps</h2>
+    <p>The proposed architecture offers a robust three-layer defense model for autonomous transportation. By applying biological principles — adaptive central coordination, autonomous local response, and physical barriers — a system emerges that is resilient against both external attacks and internal compromise.</p>
+    <p>The core strength of the model lies in the independence of the layers: the failure of one layer does not automatically compromise the whole. This is the essence of defense in depth applied to a new domain.</p>
+    <p>Possible next steps include a detailed technical specification of the communication protocol, a formal threat model using STRIDE or MITRE ATT&CK, simulation of the canary deployment strategy, and an analysis of the legal and ethical implications surrounding autonomous shutdown decisions.</p>
+
+    <h2 id="references">References</h2>
+    <ol class="ref-list">
+        <li>Miller, C. & Valasek, C. (2015). Remote Exploitation of an Unaltered Passenger Vehicle. Black Hat USA.</li>
+        <li>Langner, R. (2011). Stuxnet: Dissecting a Cyberwarfare Weapon. IEEE Security & Privacy.</li>
+        <li>UNECE (2021). UN Regulation No. 155 — Cyber Security and Cyber Security Management System.</li>
+        <li>ISO/SAE 21434:2021 — Road vehicles — Cybersecurity engineering.</li>
+        <li>NIST SP 800-82 (2023). Guide to Operational Technology (OT) Security.</li>
+        <li>Waymo Safety Report (2023). On the Road to Fully Self-Driving.</li>
+    </ol>
+</article>
+
+<footer><p>© 2026 Marc Brouwer — marc.sec portfolio</p></footer>
+</body>
+</html>
